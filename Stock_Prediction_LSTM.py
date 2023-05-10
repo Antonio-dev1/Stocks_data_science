@@ -1,13 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib import style
-import seaborn as sns
-from scipy import stats
-from scipy.stats import skew,kurtosis
-from datetime import datetime
-import matplotlib as mpl
-from functools import reduce
+
 import datetime as dt
 import math
 from sklearn import preprocessing
