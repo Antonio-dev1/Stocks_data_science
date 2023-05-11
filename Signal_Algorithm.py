@@ -14,7 +14,7 @@ tickers = [i.replace('.', '-') for i in tickers]
 # Function that calculates RSI for a single trading day
 def RSI_Calc(df):
     # Gets the moving average
-    df['MA200'] = df['Adj Close'].rolling(window=100).mean()
+    df['MA200'] = df['Adj Close'].rolling(window=120).mean()
     # Up and down price moves and relative returns
     df['price change'] = df['Adj Close'].pct_change()
     # Take the daily return if postive else just take zero

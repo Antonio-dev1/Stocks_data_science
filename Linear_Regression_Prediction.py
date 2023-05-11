@@ -5,11 +5,11 @@ import datetime as dt
 import math
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.linear_model import LinearRegression, Ridge, Lasso, LogisticRegression
-from sklearn.svm import SVC
+from sklearn.svm import SVC, SVR
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import train_test_split, cross_val_score, KFold, GridSearchCV
 import yfinance as yf
-from Signal_Algorithm import RSI_Calc,getSignals
+from Signal_Algorithm import RSI_Calc, getSignals
 
 
 def getData(symbols):
@@ -20,8 +20,10 @@ def getData(symbols):
     return stock_data
 
 
-def cleanDataFrame(stock_df):
+def cleanDataFrameandAddFeatures(stock_df):
     stock_df = stock_df.dropna()
+    stock_df['HL_PCT'] = (stock_df['High'] - stock_df['Low']) / stock_df['Close'] * 100.0
+    stock_df['PCT_change'] = (stock_df['Close'] - stock_df['Open']) / stock_df['Open'] * 100.0
     return stock_df
 
 
@@ -29,10 +31,10 @@ def splitData(stock_data, multiplier, predictors, targetCol):
     split_index = math.ceil(len(stock_data) * multiplier)
     train_df = stock_data.iloc[:split_index]
     test_df = stock_data.iloc[split_index:]
-    X_train = train_df.loc[: , predictors].values
-    X_test = test_df.loc[: , predictors].values
-    y_train = train_df.loc[: , targetCol].values.reshape(-1, 1)
-    y_test = test_df.loc[: , targetCol].values.reshape(-1, 1)
+    X_train = train_df.loc[:, predictors].values
+    X_test = test_df.loc[:, predictors].values
+    y_train = train_df.loc[:, targetCol].values.reshape(-1, 1)
+    y_test = test_df.loc[:, targetCol].values.reshape(-1, 1)
     y_train_dates = train_df.index.values
     y_test_dates = test_df.index.values
 
@@ -53,64 +55,66 @@ def getPrediction(model, X_train, X_test, y_train):
     return predictions
 
 
-def convertPredictionsIntoPandas(predictions, test_dates, X_test, predictors):
-    pred_df = pd.DataFrame(
-        np.concatenate([X_test, predictions], axis=1), columns=predictors + ['Adj Close'], index=test_dates)
-    return pred_df
+def convertToPandas(df, real_prices, predicted_prices):
+    stocks = pd.DataFrame({
+        "Real": real_prices.ravel(),
+        "Adj Close": predicted_prices.ravel()
+    }, index=df.index[-len(real_prices):])
+
+    results = pd.DataFrame({
+        "Adj Close": predicted_prices.ravel()
+    }, index=df.index[-len(real_prices):])
+    originaldata = df.loc[stocks.index, ['Close', 'Open', 'High', 'Low']]
+    output_df = pd.concat([originaldata, results], axis=1)
+    return stocks, results, output_df
 
 
-def getPrecision():
-    return 0
-
-
-#Testing the functions
+# Testing the functions
 
 params = {"alpha": [0.001, 0.01, 0.1, 1, 10, 100]}
+params_svr = params_SVR = {"C": [0.001, 0.01, 0.1, 1, 10], "epsilon": [0.01, 0.1, 1, 10]}
 models = {
     'LinearRegression': LinearRegression(),
     'LogisticRegression': LogisticRegression(),
-    'Lasso': Lasso(),
-    'Ridge': Ridge(),
-
+    'Ridge': GridSearchCV(Ridge(), param_grid=params),
+    'SVR': GridSearchCV(SVR(kernel='linear'), param_grid=params_svr)
 }
-
 
 tickers = ['AAPL', 'MSFT']
 
-# Get the Data
-stocks_data = getData(tickers)
-stock_clean = cleanDataFrame(stocks_data[0])
-print(stock_clean.head())
-features = ['Open', 'High' , 'Low']
-target_col = 'Adj Close'
-X_train , X_test , y_train , y_test , y_train_dates , y_test_dates = splitData(stock_clean , 0.8 , features , target_col)
-X_train , X_test = scaleData(X_train , X_test)
-output = getPrediction(models['LinearRegression'] , X_train , X_test , y_train)
 
-output_df = convertPredictionsIntoPandas(output , y_test_dates , X_test , features)
-print(output_df)
-print(mean_squared_error(y_test , output , squared=False))
-print("Test" , y_test)
-print("Predicted" , output)
-print(output_df)
+def runPredictionWithoutSentiment(models, modelName, plot, getSignal):
+    tickers = ['AAPL', 'MSFT']
+    ml_model = models[modelName]
+    stocks_data = getData(tickers)
+    stock_clean = cleanDataFrameandAddFeatures(stocks_data[0])
+    features = ['Open', 'High', 'Low', 'HL_PCT', 'PCT_change']
+    target_col = 'Adj Close'
+    X_train, X_test, y_train, y_test, y_train_dates, y_test_dates = splitData(stock_clean, 0.8, features, target_col)
+    X_train, X_test = scaleData(X_train, X_test)
+    output = getPrediction(ml_model, X_train, X_test, y_train)
+    stocks , results, output_df = convertToPandas(stock_clean , y_test , output)
+    print(output_df)
+    print(mean_squared_error(y_test, output, squared=False))
 
-#Get Signals from prediction part
+    if getSignal:
+        frames = RSI_Calc(output_df)
+        buyingsignals, sellingdates = getSignals(frames)
 
-frames = RSI_Calc(output_df)
-buyingsignals, sellingdates = getSignals(frames)
+        plt.figure(figsize=(12, 5))
+        plt.title('Signals of ' + tickers[0] + ' using the model ' + modelName  )
+        plt.scatter(frames.loc[buyingsignals].index, frames.loc[buyingsignals]['Adj Close'], marker='^', c='g')
+        plt.plot(frames['Adj Close'], alpha=0.7)
+        plt.scatter(frames.loc[sellingdates].index, frames.loc[sellingdates]['Adj Close'], marker='^', c='r')
+        plt.plot(frames['Adj Close'], alpha=0.7)
+        plt.show()
+        profits = (frames.loc[sellingdates].Open.values - frames.loc[buyingsignals].Open.values) / frames.loc[
+            buyingsignals].Open.values
 
-plt.figure(figsize=(12, 5))
-plt.scatter(frames.loc[buyingsignals].index, frames.loc[buyingsignals]['Adj Close'], marker='^', c='g')
-plt.plot(frames['Adj Close'], alpha=0.7)
-plt.scatter(frames.loc[sellingdates].index, frames.loc[sellingdates]['Adj Close'], marker='^', c='r')
-plt.plot(frames['Adj Close'], alpha=0.7)
-plt.show()
+        wins = [i for i in profits if i > 0]
+        winning_rate = len(wins) / len(profits)
 
-profits = (frames.loc[sellingdates].Open.values - frames.loc[buyingsignals].Open.values) / frames.loc[
-    buyingsignals].Open.values
+        print(winning_rate)
 
 
-wins = [i for i in profits if i > 0]
-winning_rate = len(wins) / len(profits)
-
-print(winning_rate)
+runPredictionWithoutSentiment(models, 'SVR', False, True)

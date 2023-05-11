@@ -93,6 +93,3 @@ def predict(train, test, predictors, model):
     return combined
 
 
-from sklearn.svm import SVC
-
-svc = SVC(kernel='linear', random_state=1)
