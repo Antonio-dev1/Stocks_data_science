@@ -1,3 +1,5 @@
+import pickle
+
 import pandas as pd
 from matplotlib import pyplot as plt
 from sklearn.ensemble import RandomForestRegressor
@@ -79,6 +81,24 @@ def splitData(X, y):
     return X_train, X_test, y_train, y_test, y_test_scaler
 
 
+def testPickle():
+    df = pd.read_csv('./Data/AAPL.csv', index_col="Date", infer_datetime_format=True, parse_dates=True)
+    df["Pct_change"] = df["Adj Close"].pct_change()
+    # Drop null values
+    df.dropna(inplace=True)
+    df.head()
+    window_size = 2
+    feature_col_number1 = 4
+    feature_col_number2 = 6
+    feature_col_number3 = 7
+    target_col_number = 4
+    X, y = window_data(df, window_size, feature_col_number1, feature_col_number2, feature_col_number3,
+                       target_col_number)
+    X_train, X_test, y_train, y_test, y_test_scaler = splitData(X, y)
+    pickled_model = pickle.load(open('./pickleFiles/Stock_SVR.pkl', 'rb'))
+    print(pickled_model.predict(X_test))
+
+
 def convertToPandas(df, real_prices, predicted_prices):
     stocks = pd.DataFrame({
         "Real": real_prices.ravel(),
@@ -96,9 +116,9 @@ def convertToPandas(df, real_prices, predicted_prices):
 lasso_params = {"alpha": [0.01, 0.1, 1, 10, 100, 1000]}
 params_SVR = {"C": [0.001, 0.01, 0.1, 1, 10], "epsilon": [0.01, 0.1, 1, 10]}
 
-models = {'LinearRegression':LinearRegression() , 'Lasso': GridSearchCV(Lasso(), param_grid=lasso_params),
+models = {'LinearRegression': LinearRegression(), 'Lasso': GridSearchCV(Lasso(), param_grid=lasso_params),
           'Ridge': GridSearchCV(Ridge(), param_grid=lasso_params), 'SVR': GridSearchCV(SVR(
-        kernel='linear'), param_grid=params_SVR), 'XGB': XGBRegressor(objective='reg:squarederror', n_estimators=1000) ,
+        kernel='linear'), param_grid=params_SVR), 'XGB': XGBRegressor(objective='reg:squarederror', n_estimators=1000),
           'RandomForest': RandomForestRegressor(n_estimators=200, min_samples_split=50, random_state=1)}
 
 
@@ -111,7 +131,11 @@ def plotData(stocks, modelName):
     plt.show()
 
 
-def runStockPredictionSentiment(modelName, getSignal, models = models):
+def convertToPickle(model):
+    pickle.dump(model, open('./pickleFiles/Stock_Random_Forest.pkl', 'wb'))
+
+
+def runStockPredictionSentiment(modelName, getSignal, models=models):
     print("Models has just started")
     model = models[modelName]
     df = pd.read_csv('../Data/AAPL.csv', index_col="Date", infer_datetime_format=True, parse_dates=True)
@@ -129,13 +153,12 @@ def runStockPredictionSentiment(modelName, getSignal, models = models):
     X_train, X_test, y_train, y_test, y_test_scaler = splitData(X, y)
     predictions, RMSE, R_Squared = getPredictions(model, X_train, X_test, y_train, y_test)
     print("RMSE: " + str(RMSE))
-    print("R_squared: "+ str(R_Squared))
+    print("R_squared: " + str(R_Squared))
     predicted_prices = y_test_scaler.inverse_transform(predictions.reshape(-1, 1))
     real_prices = y_test_scaler.inverse_transform(y_test.reshape(-1, 1))
     stocks, results, output_df = convertToPandas(df, real_prices, predicted_prices)
 
     if getSignal:
-
         frames = RSI_Calc(output_df)
         buyingsignals, sellingdates = getSignals(frames)
         profits = (frames.loc[sellingdates].Open.values - frames.loc[buyingsignals].Open.values) / frames.loc[
@@ -146,8 +169,8 @@ def runStockPredictionSentiment(modelName, getSignal, models = models):
 
         print(winning_rate)
 
-        return predicted_prices, real_prices , output_df ,frames,buyingsignals, sellingdates,winning_rate
-    return predicted_prices,real_prices,stocks,RMSE,R_Squared
+        return predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate
+    return predicted_prices, real_prices, stocks, RMSE, R_Squared
 
-
-#runStockPredictionSentiment('Ridge', True)
+# runStockPredictionSentiment('RandomForest', False)
+# pickled_model = pickle.load(open('./pickleFiles/Stock_Linear_Regression.pkl', 'rb'))

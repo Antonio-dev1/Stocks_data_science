@@ -9,6 +9,9 @@ from sklearn.svm import SVC, SVR
 from sklearn.metrics import accuracy_score, mean_squared_error
 from sklearn.model_selection import train_test_split, cross_val_score, KFold, GridSearchCV
 import yfinance as yf
+from xgboost import XGBRegressor
+from sklearn import metrics
+
 from Signal_Algorithm import RSI_Calc, getSignals
 
 
@@ -49,10 +52,12 @@ def scaleData(X_train, X_test):
     return X_train, X_test
 
 
-def getPrediction(model, X_train, X_test, y_train):
-    model.fit(X_train, y_train)
-    predictions = model.predict(X_test)
-    return predictions
+def getPrediction(model, X_train, X_test, y_train , y_test):
+    model.fit(X_train, y_train.ravel())
+    predicted = model.predict(X_test)
+    rootMeanSquared = np.sqrt(metrics.mean_squared_error(y_test, predicted))
+    R_squared = model.score(X_test , y_test)
+    return predicted, rootMeanSquared, R_squared
 
 
 def convertToPandas(df, real_prices, predicted_prices):
@@ -75,27 +80,27 @@ params = {"alpha": [0.001, 0.01, 0.1, 1, 10, 100]}
 params_svr = params_SVR = {"C": [0.001, 0.01, 0.1, 1, 10], "epsilon": [0.01, 0.1, 1, 10]}
 models = {
     'LinearRegression': LinearRegression(),
-    'LogisticRegression': LogisticRegression(),
     'Ridge': GridSearchCV(Ridge(), param_grid=params),
-    'SVR': GridSearchCV(SVR(kernel='linear'), param_grid=params_svr)
+    'SVR': GridSearchCV(SVR(kernel='linear'), param_grid=params_svr),
+    'XGB': XGBRegressor(objective='reg:squarederror', n_estimators=1000)
 }
 
 tickers = ['AAPL', 'MSFT']
 
 
-def runPredictionWithoutSentiment(models, modelName, plot, getSignal):
+def runPredictionWithoutSentiment(modelName , getSignal , models=models):
     tickers = ['AAPL', 'MSFT']
     ml_model = models[modelName]
     stocks_data = getData(tickers)
     stock_clean = cleanDataFrameandAddFeatures(stocks_data[0])
-    features = ['Open', 'High', 'Low', 'HL_PCT', 'PCT_change']
+    features = ['Open', 'High', 'Low']
     target_col = 'Adj Close'
     X_train, X_test, y_train, y_test, y_train_dates, y_test_dates = splitData(stock_clean, 0.8, features, target_col)
     X_train, X_test = scaleData(X_train, X_test)
-    output = getPrediction(ml_model, X_train, X_test, y_train)
-    stocks , results, output_df = convertToPandas(stock_clean , y_test , output)
+    predictions, RMSE, R_Squared = getPrediction(ml_model, X_train, X_test, y_train, y_test)
+    stocks , results, output_df = convertToPandas(stock_clean , y_test , predictions)
     print(output_df)
-    print(mean_squared_error(y_test, output, squared=False))
+    print(mean_squared_error(y_test, predictions, squared=False))
 
     if getSignal:
         frames = RSI_Calc(output_df)
@@ -113,8 +118,10 @@ def runPredictionWithoutSentiment(models, modelName, plot, getSignal):
 
         wins = [i for i in profits if i > 0]
         winning_rate = len(wins) / len(profits)
+        return predictions, y_test, output_df, frames, buyingsignals, sellingdates, winning_rate
+    return predictions, y_test ,  stocks, RMSE, R_Squared
 
-        print(winning_rate)
 
 
-runPredictionWithoutSentiment(models, 'SVR', False, True)
+
+#print(runPredictionWithoutSentiment( 'SVR', False))

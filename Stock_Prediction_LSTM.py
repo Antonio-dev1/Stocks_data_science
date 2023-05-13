@@ -1,3 +1,5 @@
+import pickle
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,7 +15,7 @@ from Signal_Algorithm import RSI_Calc, getSignals
 def getData(start, tickers):
     data = {}
     for ticker in tickers:
-        data[ticker] = yf.download(ticker , start=start)
+        data[ticker] = yf.download(ticker, start=start)
     return data
 
 
@@ -57,8 +59,7 @@ def getPredictions(n_steps, n_features, X_train, X_test, y_train, y_test):
     model.add(Dense(units=1))
     model.compile(optimizer='adam', loss='mean_squared_error')
 
-    model.fit(X_train, y_train, epochs=50, batch_size=32)
-
+    model.fit(X_train, y_train, epochs=5, batch_size=32)
     y_pred = model.predict(X_test).flatten()
     print(y_pred.shape)
     # rescale predictions and actual values
@@ -72,10 +73,11 @@ def getPredictions(n_steps, n_features, X_train, X_test, y_train, y_test):
     plt.legend(['Predictions', 'Actual'])
     plt.show()
 
-    return y_pred
+    return y_pred,rmse
+def convertToPickle(model):
+    pickle.dump(model, open('./pickleFiles/Stock_LSTM.pkl', 'wb'))
 
-
-def convertToPandas(df , real_prices, predicted_prices):
+def convertToPandas(df, real_prices, predicted_prices):
     stocks = pd.DataFrame({
         "Real": real_prices.ravel(),
         "Adj Close": predicted_prices.ravel()
@@ -89,21 +91,20 @@ def convertToPandas(df , real_prices, predicted_prices):
     return stocks, results, output_df
 
 
-def runLSTM(plot, tickers, stockInChoice , getSignal):
+allTickers = ['AAPL']
+oneTicker = 'AAPL'
+
+
+def runLSTM(getSignal, tickers=allTickers, stockInChoice=oneTicker):
     start = dt.datetime(2010, 1, 1)
     stock_dict = getData(start, tickers)
     stock_df = stock_dict[stockInChoice]
     X_train, X_test, y_train, y_test = splitData(stock_df)
-    y_pred = getPredictions(60, 5, X_train, X_test, y_train, y_test)
-
-    if plot:
-        plt.plot(y_pred)
-        plt.plot(y_test)
-        plt.legend(['Predictions' , 'Actual'])
-        plt.tile('LSTM predictions for ' + stockInChoice)
+    y_pred,RMSE = getPredictions(60, 5, X_train, X_test, y_train, y_test)
+    stocks,results,output_df = convertToPandas(stock_df,y_test,y_pred)
 
     if getSignal:
-        stocks,results,output_df = convertToPandas(stock_df , y_test , y_pred)
+        stocks, results, output_df = convertToPandas(stock_df, y_test, y_pred)
         frames = RSI_Calc(output_df)
         buyingsignals, sellingdates = getSignals(frames)
         profits = (frames.loc[sellingdates].Open.values - frames.loc[buyingsignals].Open.values) / frames.loc[
@@ -114,9 +115,8 @@ def runLSTM(plot, tickers, stockInChoice , getSignal):
         plt.scatter(frames.loc[buyingsignals].index, frames.loc[buyingsignals]['Adj Close'], marker='^', c='g')
         plt.scatter(frames.loc[sellingdates].index, frames.loc[sellingdates]['Adj Close'], marker='^', c='r')
         plt.plot(frames['Adj Close'], alpha=0.7)
-        plt.show()
+        return y_pred, y_test, output_df, frames, buyingsignals, sellingdates, winning_rate
+    return y_pred, y_test ,  stocks, RMSE
 
-        print(winning_rate)
 
-
-runLSTM( False, ['AAPL'], 'AAPL' , True)
+#runLSTM(True)
