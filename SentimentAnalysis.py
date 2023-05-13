@@ -158,7 +158,7 @@ def runStockPredictionSentiment(modelName, getSignal, models=models):
                        target_col_number)
     X_train, X_test, y_train, y_test, y_test_scaler = splitData(X, y)
     predictions, RMSE, R_Squared = getPredictions(model, X_train, X_test, y_train, y_test)
-    convertToPickle(model)
+    # convertToPickle(model)
     print("RMSE: " + str(RMSE))
     print("R_squared: " + str(R_Squared))
     predicted_prices = y_test_scaler.inverse_transform(predictions.reshape(-1, 1))

@@ -64,6 +64,9 @@ def generate_signals(y_test, preds):
     sell_signals[::100] = price_diff[::100] > 0
     return buy_signals, sell_signals
 
+def convertToPickle(model):
+    pickle.dump(model, open('pickleFiles_crypto/Crypto_XGB.pkl', 'wb'))
+
 
 # def plot_results(data, window_size, train_size, y_test, preds):
 #     plt.plot(data.index[window_size + train_size:], data['Close'][window_size + train_size:], label='Actual',
@@ -150,7 +153,7 @@ def runCryptoAnalysis(getSignal, modelName, allModels=models):
 
     # Create and train the linear regression model
     model = train_model(X_train, y_train , ml_model)
-
+    # convertToPickle(model)
     # Make predictions on the test set
     preds = predict(model, X_test)
     # Compute evaluation metrics
@@ -189,6 +192,4 @@ def runCryptoAnalysisWithSavedModels(getSignal, modelName, allModels=models):
     return preds, test_data,train_data,y_test, window_size,  mae, mse, r2,data,X_test
 
 
-# preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test = runCryptoAnalysis(False , 'LinearRegression')
-# print("Prediction:", preds)
-# print("X_test:", X_test[0])
+# preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test = runCryptoAnalysis(False , 'XGB')
