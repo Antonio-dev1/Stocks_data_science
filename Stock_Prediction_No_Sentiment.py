@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split, cross_val_score, KFold, Gr
 import yfinance as yf
 from xgboost import XGBRegressor
 from sklearn import metrics
+import pickle
 
 from Signal_Algorithm import RSI_Calc, getSignals
 
@@ -59,6 +60,12 @@ def getPrediction(model, X_train, X_test, y_train , y_test):
     R_squared = model.score(X_test , y_test)
     return predicted, rootMeanSquared, R_squared
 
+def getPredictionsWithSavedModel(modelName, X_test, y_test):
+    model = pickle.load(open(f'../pickleFiles/Stock_{modelName}.pkl', 'rb'))
+    predicted = model.predict(X_test)
+    rootMeanSquared = np.sqrt(metrics.mean_squared_error(y_test, predicted))
+    R_squared = metrics.r2_score(y_test, predicted)
+    return predicted, rootMeanSquared, R_squared
 
 def convertToPandas(df, real_prices, predicted_prices):
     stocks = pd.DataFrame({
@@ -121,7 +128,36 @@ def runPredictionWithoutSentiment(modelName , getSignal , models=models):
         return predictions, y_test, output_df, frames, buyingsignals, sellingdates, winning_rate
     return predictions, y_test ,  stocks, RMSE, R_Squared
 
+def runPredictionWithoutSentimentWithSavedModels(modelName , getSignal , models=models):
+    print("Loading model without sentiment...")
+    tickers = ['AAPL', 'MSFT']
+    stocks_data = getData(tickers)
+    stock_clean = cleanDataFrameandAddFeatures(stocks_data[0])
+    features = ['Open', 'High', 'Low']
+    target_col = 'Adj Close'
+    X_train, X_test, y_train, y_test, y_train_dates, y_test_dates = splitData(stock_clean, 0.8, features, target_col)
+    X_train, X_test = scaleData(X_train, X_test)
+    predictions, RMSE, R_Squared = getPredictionsWithSavedModel(modelName, X_test, y_test)
+    stocks , results, output_df = convertToPandas(stock_clean , y_test , predictions)
+    print(output_df)
+    print(mean_squared_error(y_test, predictions, squared=False))
 
+    if getSignal:
+        frames = RSI_Calc(output_df)
+        buyingsignals, sellingdates = getSignals(frames)
 
+        plt.figure(figsize=(12, 5))
+        plt.title('Signals of ' + tickers[0] + ' using the model ' + modelName  )
+        plt.scatter(frames.loc[buyingsignals].index, frames.loc[buyingsignals]['Adj Close'], marker='^', c='g')
+        plt.plot(frames['Adj Close'], alpha=0.7)
+        plt.scatter(frames.loc[sellingdates].index, frames.loc[sellingdates]['Adj Close'], marker='^', c='r')
+        plt.plot(frames['Adj Close'], alpha=0.7)
+        plt.show()
+        profits = (frames.loc[sellingdates].Open.values - frames.loc[buyingsignals].Open.values) / frames.loc[
+            buyingsignals].Open.values
 
+        wins = [i for i in profits if i > 0]
+        winning_rate = len(wins) / len(profits)
+        return predictions, y_test, output_df, frames, buyingsignals, sellingdates, winning_rate
+    return predictions, y_test ,  stocks, RMSE, R_Squared
 #print(runPredictionWithoutSentiment( 'SVR', False))

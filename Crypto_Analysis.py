@@ -8,7 +8,7 @@ import yfinance as yf
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVR
 from xgboost import XGBRegressor
-
+import pickle
 
 def download_data(tickers):
     data = yf.download(tickers , start='2010-01-01')
@@ -160,5 +160,35 @@ def runCryptoAnalysis(getSignal, modelName, allModels=models):
         return preds,test_data, window_size,buy_signals, sell_signals
     return preds, test_data,train_data,y_test, window_size,  mae, mse, r2,data,X_test
 
+def runCryptoAnalysisWithSavedModels(getSignal, modelName, allModels=models):
+    print("Loading saved crypto models...")
+    tickers = 'BTC-USD'
+    data = download_data(tickers)
+    ml_model = allModels[modelName]
 
-#print(runCryptoAnalysis(False , 'LinearRegression'))
+    # Extract relevant features
+    data = extract_features(data)
+
+    # Split the data into training and test sets
+    train_data, test_data = split_data(data, 200)
+
+    # Prepare the data for linear regression with a rolling window
+    window_size = 5
+    X_train, y_train, X_test, y_test = prepare_data(train_data, test_data, window_size)
+
+    # Create and train the linear regression model
+    model = pickle.load(open(f'../pickleFiles_crypto/Crypto_{modelName}.pkl', 'rb'))
+
+    # Make predictions on the test set
+    preds = predict(model, X_test)
+    # Compute evaluation metrics
+    mae, mse, r2 = evaluate(y_test, preds)
+    if getSignal:
+        buy_signals, sell_signals = generate_signals(y_test, preds)
+        return preds,test_data, window_size,buy_signals, sell_signals
+    return preds, test_data,train_data,y_test, window_size,  mae, mse, r2,data,X_test
+
+
+# preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test = runCryptoAnalysis(False , 'LinearRegression')
+# print("Prediction:", preds)
+# print("X_test:", X_test[0])

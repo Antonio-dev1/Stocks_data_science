@@ -48,6 +48,12 @@ def getPredictions(model, X_train, X_test, y_train, y_test):
     R_squared = metrics.r2_score(y_test, predicted)
     return predicted, rootMeanSquared, R_squared
 
+def getPredictionsWithSavedModel(modelName, X_test, y_test):
+    model = pickle.load(open(f'../pickleFiles_sentiment/Stock_{modelName}.pkl', 'rb'))
+    predicted = model.predict(X_test)
+    rootMeanSquared = np.sqrt(metrics.mean_squared_error(y_test, predicted))
+    R_squared = metrics.r2_score(y_test, predicted)
+    return predicted, rootMeanSquared, R_squared
 
 def splitData(X, y):
     X_split = int(0.2 * len(X))
@@ -172,5 +178,41 @@ def runStockPredictionSentiment(modelName, getSignal, models=models):
         return predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate
     return predicted_prices, real_prices, stocks, RMSE, R_Squared
 
+def runStockPredictionSentimentWithSavedModel(modelName, getSignal):
+    print("Loading saved model...")
+    df = pd.read_csv('../Data/AAPL.csv', index_col="Date", infer_datetime_format=True, parse_dates=True)
+    df["Pct_change"] = df["Adj Close"].pct_change()
+    # Drop null values
+    df.dropna(inplace=True)
+    df.head()
+    window_size = 2
+    feature_col_number1 = 4
+    feature_col_number2 = 6
+    feature_col_number3 = 7
+    target_col_number = 4
+    X, y = window_data(df, window_size, feature_col_number1, feature_col_number2, feature_col_number3,
+                       target_col_number)
+    X_train, X_test, y_train, y_test, y_test_scaler = splitData(X, y)
+    predictions, RMSE, R_Squared = getPredictionsWithSavedModel(modelName, X_test, y_test)
+    print("RMSE: " + str(RMSE))
+    print("R_squared: " + str(R_Squared))
+    predicted_prices = y_test_scaler.inverse_transform(predictions.reshape(-1, 1))
+    real_prices = y_test_scaler.inverse_transform(y_test.reshape(-1, 1))
+    stocks, results, output_df = convertToPandas(df, real_prices, predicted_prices)
+
+    if getSignal:
+        frames = RSI_Calc(output_df)
+        buyingsignals, sellingdates = getSignals(frames)
+        profits = (frames.loc[sellingdates].Open.values - frames.loc[buyingsignals].Open.values) / frames.loc[
+            buyingsignals].Open.values
+
+        wins = [i for i in profits if i > 0]
+        winning_rate = len(wins) / len(profits)
+
+        print(winning_rate)
+
+        return predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate
+    return predicted_prices, real_prices, stocks, RMSE, R_Squared
+
 # runStockPredictionSentiment('RandomForest', False)
-# pickled_model = pickle.load(open('./pickleFiles/Stock_Linear_Regression.pkl', 'rb'))
+# pickled_model = pickle.load(open('./pickleFiles/Stock_LinearRegression.pkl', 'rb'))
