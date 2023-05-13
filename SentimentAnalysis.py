@@ -101,7 +101,7 @@ def testPickle():
     X, y = window_data(df, window_size, feature_col_number1, feature_col_number2, feature_col_number3,
                        target_col_number)
     X_train, X_test, y_train, y_test, y_test_scaler = splitData(X, y)
-    pickled_model = pickle.load(open('./pickleFiles/Stock_SVR.pkl', 'rb'))
+    pickled_model = pickle.load(open('./pickleFiles_sentiment/Stock_XGB.pkl', 'rb'))
     print(pickled_model.predict(X_test))
 
 
@@ -138,13 +138,13 @@ def plotData(stocks, modelName):
 
 
 def convertToPickle(model):
-    pickle.dump(model, open('./pickleFiles/Stock_Random_Forest.pkl', 'wb'))
+    pickle.dump(model, open('pickleFiles_sentiment/Stock_XGB.pkl', 'wb'))
 
 
 def runStockPredictionSentiment(modelName, getSignal, models=models):
     print("Models has just started")
     model = models[modelName]
-    df = pd.read_csv('../Data/AAPL.csv', index_col="Date", infer_datetime_format=True, parse_dates=True)
+    df = pd.read_csv('./Data/AAPL.csv', index_col="Date", infer_datetime_format=True, parse_dates=True)
     df["Pct_change"] = df["Adj Close"].pct_change()
     # Drop null values
     df.dropna(inplace=True)
@@ -158,6 +158,7 @@ def runStockPredictionSentiment(modelName, getSignal, models=models):
                        target_col_number)
     X_train, X_test, y_train, y_test, y_test_scaler = splitData(X, y)
     predictions, RMSE, R_Squared = getPredictions(model, X_train, X_test, y_train, y_test)
+    convertToPickle(model)
     print("RMSE: " + str(RMSE))
     print("R_squared: " + str(R_Squared))
     predicted_prices = y_test_scaler.inverse_transform(predictions.reshape(-1, 1))
@@ -214,5 +215,7 @@ def runStockPredictionSentimentWithSavedModel(modelName, getSignal):
         return predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate
     return predicted_prices, real_prices, stocks, RMSE, R_Squared
 
+# runStockPredictionSentiment('XGB', False)
+# testPickle()
 # runStockPredictionSentiment('RandomForest', False)
 # pickled_model = pickle.load(open('./pickleFiles/Stock_LinearRegression.pkl', 'rb'))

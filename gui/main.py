@@ -20,6 +20,7 @@ class App(customtkinter.CTk):
         # configure window
         self.title("Buy High, Sell Low")
         self.geometry(f"{1200}x{580}")
+        self.isDrawn = False
 
         # configure grid layout (4x4)
         self.grid_columnconfigure(1, weight=1)
@@ -122,6 +123,18 @@ class App(customtkinter.CTk):
 
     def stock_sentimentClicked(self):
         plt.clf()
+
+        ax = self.figure.add_subplot(111)
+        if self.isDrawn:
+            ax.clear()
+            ax.set_title("")
+            ax.set_xlabel("")
+            ax.set_ylabel("")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            print('canva cleared')
+            self.canvas.draw()
+
         modelsMap = {0: 'LinearRegression', 1: 'Ridge', 2: 'Lasso', 3: 'LSTM', 4: "SVR", 5: "XGB"}
         modelName = modelsMap[self.radio_var.get()]
         if self.checkbox_getSignal.get() == 1:
@@ -140,6 +153,7 @@ class App(customtkinter.CTk):
             ax.set_title('Buying and Selling Signals for the predictions done by ' + str(modelName) + " model")
             self.model_output.configure(text="Winning rate of strategy is " + str(winning_rate))
             self.canvas.draw()
+
         elif self.checkbox_getSignal.get() == 0:
             if self.checkbox_use_saved.get() == 1:
                 print(modelName)
@@ -155,9 +169,22 @@ class App(customtkinter.CTk):
             ax.set_title('This is the graph for the prediction of the ' + modelName + " model")
             self.model_output.configure(text="R-squared " + str(Rsquared) + "\n" + "RMSE: " + str(RMSE))
             self.canvas.draw()
+            self.isDrawn = True
 
     def regularStockPressed(self):
         plt.clf()
+
+        ax = self.figure.add_subplot(111)
+        if self.isDrawn:
+            ax.clear()
+            ax.set_title("")
+            ax.set_xlabel("")
+            ax.set_ylabel("")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            print('canva cleared')
+            self.canvas.draw()
+
         modelsMap = {0: 'LinearRegression', 1: 'Ridge', 2: 'Lasso', 3: 'LSTM', 4: "SVR", 5: "XGB"}
         modelName = modelsMap[self.radio_var.get()]
 
@@ -182,6 +209,8 @@ class App(customtkinter.CTk):
                 self.model_output.configure(text="Winning rate of strategy is " + str(winning_rate))
                 self.canvas.draw()
 
+                self.isDrawn = True
+
 
             elif self.checkbox_getSignal.get() == 0:
                 plt.clf()
@@ -200,8 +229,22 @@ class App(customtkinter.CTk):
                 self.model_output.configure(text="RMSE: " + str(RMSE))
                 self.canvas.draw()
 
+                self.isDrawn = True
+
     def onCryptoPressed(self):
         plt.clf()
+
+        ax = self.figure.add_subplot(111)
+        if self.isDrawn:
+            ax.clear()
+            ax.set_title("")
+            ax.set_xlabel("")
+            ax.set_ylabel("")
+            ax.set_xticks([])
+            ax.set_yticks([])
+            print('canva cleared')
+            self.canvas.draw()
+
         modelsMap = {0: 'LinearRegression', 1: 'Ridge', 2: 'Lasso', 3: 'LSTM', 4: "SVR", 5: "XGB"}
         modelName = modelsMap[self.radio_var.get()]
         if modelName == 'LSTM':
@@ -225,6 +268,9 @@ class App(customtkinter.CTk):
                            label='Sell Signal',
                            marker='v', zorder=3)
                 self.canvas.draw()
+
+                self.isDrawn = True
+
             elif self.checkbox_getSignal.get() == 0:
                 plt.clf()
                 if self.checkbox_use_saved.get() == 1:
@@ -247,10 +293,24 @@ class App(customtkinter.CTk):
                 self.model_output.configure(
                     text="MAE: " + str(mae) + "\n" + "MSE: " + str(mse) + "\n" + "R2: " + str(r2))
                 self.canvas.draw()
+                self.isDrawn = True
+
 
 
 def plotLSTM(self, getSignal):
     plt.clf()
+
+    ax = self.figure.add_subplot(111)
+    if self.isDrawn:
+        ax.clear()
+        ax.set_title("")
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        ax.set_xticks([])
+        ax.set_yticks([])
+        print('canva cleared')
+        self.canvas.draw()
+
     if getSignal:
         if self.checkbox_use_saved.get() == 1:
             print("Regular LSTM")
@@ -266,6 +326,8 @@ def plotLSTM(self, getSignal):
         ax.set_title('Buying and Selling Signals for the predictions done by LSTM' + " model")
         self.model_output.configure(text="Winning rate of strategy is " + str(winning_rate))
         self.canvas.draw()
+        self.isDrawn = True
+
 
     else:
         if self.checkbox_use_saved.get() == 1:
@@ -281,8 +343,23 @@ def plotLSTM(self, getSignal):
         ax.set_title("This is the graph for the prediction of the LSTM model")
         self.model_output.configure(text="RMSE: " + str(RMSE))
         self.canvas.draw()
+        self.isDrawn = True
+
+
 def plotLSTMCrypto(self , getSignal):
     plt.clf()
+
+    ax = self.figure.add_subplot(111)
+    if self.isDrawn:
+        ax.clear()
+        ax.set_title("")
+        ax.set_xlabel("")
+        ax.set_ylabel("")
+        ax.set_xticks([])
+        ax.set_yticks([])
+        print('canva cleared')
+        self.canvas.draw()
+
     if getSignal:
         if self.checkbox_use_saved.get() == 1:
             print("Crypto LSTM")
@@ -298,6 +375,8 @@ def plotLSTMCrypto(self , getSignal):
                    label='Sell Signal',
                    marker='v', zorder=3)
         self.canvas.draw()
+        self.isDrawn = True
+
 
     else:
         if self.checkbox_use_saved.get() == 1:
@@ -313,7 +392,7 @@ def plotLSTMCrypto(self , getSignal):
         ax.legend(loc='best', fontsize=16)
         self.model_output.configure(text="MSE: " + str(mse))
         self.canvas.draw()
-
+        self.isDrawn = True
 
 
 if __name__ == "__main__":
