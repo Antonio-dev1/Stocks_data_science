@@ -19,7 +19,9 @@ def extract_features(data):
     data = data.reset_index()
     data = data.set_index('Date')
     data.index = pd.to_datetime(data.index, unit='ns')
-    data = data.loc[:, ['Close']]
+    # data = data.loc[:, ['Close']]
+    data['High-Low'] = data['High'] - data['Low']
+    data['Close-Open'] = data['Close'] - data['Open']
     return data
 
 
@@ -30,13 +32,18 @@ def split_data(data, train_size):
 
 
 def prepare_data(train_data, test_data, window_size):
-    X_train = np.array([train_data[i:i + window_size].values.ravel() for i in range(len(train_data) - window_size)])
+    X_train = np.array([
+        train_data[i:i + window_size][['Close', 'High-Low', 'Close-Open']].values.ravel()
+        for i in range(len(train_data) - window_size)
+    ])
     y_train = train_data['Close'].values[window_size:]
-
-    X_test = np.array([test_data[i:i + window_size].values.ravel() for i in range(len(test_data) - window_size)])
+    X_test = np.array([
+        test_data[i:i + window_size][['Close', 'High-Low', 'Close-Open']].values.ravel()
+        for i in range(len(test_data) - window_size)
+    ])
     y_test = test_data['Close'].values[window_size:]
-
     return X_train, y_train, X_test, y_test
+
 
 
 def train_model(X_train, y_train, model):
@@ -63,6 +70,10 @@ def generate_signals(y_test, preds):
     buy_signals[::100] = price_diff[::100] < 0
     sell_signals[::100] = price_diff[::100] > 0
     return buy_signals, sell_signals
+
+def calculate_next_day_price(model, X_test):
+    next_day_pred = model.predict(X_test[-1].reshape(1, -1))
+    return next_day_pred[0]
 
 
 # def plot_results(data, window_size, train_size, y_test, preds):
@@ -153,12 +164,17 @@ def runCryptoAnalysis(getSignal, modelName, allModels=models):
 
     # Make predictions on the test set
     preds = predict(model, X_test)
+
     # Compute evaluation metrics
     mae, mse, r2 = evaluate(y_test, preds)
+
     if getSignal:
         buy_signals, sell_signals = generate_signals(y_test, preds)
-        return preds,test_data, window_size,buy_signals, sell_signals
-    return preds, test_data,train_data,y_test, window_size,  mae, mse, r2,data,X_test
+        return preds, test_data, window_size, buy_signals, sell_signals
+    else:
+        next_day_price = calculate_next_day_price(model, X_test)
+        return preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test, next_day_price
+
 
 
 #print(runCryptoAnalysis(False , 'LinearRegression'))

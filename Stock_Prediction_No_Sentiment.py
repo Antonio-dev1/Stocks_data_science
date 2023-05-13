@@ -52,12 +52,18 @@ def scaleData(X_train, X_test):
     return X_train, X_test
 
 
-def getPrediction(model, X_train, X_test, y_train , y_test):
+def getPrediction(model, X_train, X_test, y_train, y_test):
     model.fit(X_train, y_train.ravel())
     predicted = model.predict(X_test)
     rootMeanSquared = np.sqrt(metrics.mean_squared_error(y_test, predicted))
-    R_squared = model.score(X_test , y_test)
-    return predicted, rootMeanSquared, R_squared
+    R_squared = model.score(X_test, y_test)
+    next_day_price = calculate_next_day_price(model, X_test)
+    return predicted, rootMeanSquared, R_squared,next_day_price
+
+
+def calculate_next_day_price(model, X_test):
+    next_day_pred = model.predict(X_test[-1].reshape(1, -1))
+    return next_day_pred[0]
 
 
 def convertToPandas(df, real_prices, predicted_prices):
@@ -88,7 +94,7 @@ models = {
 tickers = ['AAPL', 'MSFT']
 
 
-def runPredictionWithoutSentiment(modelName , getSignal , models=models):
+def runPredictionWithoutSentiment(modelName, getSignal, models=models):
     tickers = ['AAPL', 'MSFT']
     ml_model = models[modelName]
     stocks_data = getData(tickers)
@@ -97,8 +103,8 @@ def runPredictionWithoutSentiment(modelName , getSignal , models=models):
     target_col = 'Adj Close'
     X_train, X_test, y_train, y_test, y_train_dates, y_test_dates = splitData(stock_clean, 0.8, features, target_col)
     X_train, X_test = scaleData(X_train, X_test)
-    predictions, RMSE, R_Squared = getPrediction(ml_model, X_train, X_test, y_train, y_test)
-    stocks , results, output_df = convertToPandas(stock_clean , y_test , predictions)
+    predictions, RMSE, R_Squared,nex_day_price = getPrediction(ml_model, X_train, X_test, y_train, y_test)
+    stocks, results, output_df = convertToPandas(stock_clean, y_test, predictions)
     print(output_df)
     print(mean_squared_error(y_test, predictions, squared=False))
 
@@ -107,7 +113,7 @@ def runPredictionWithoutSentiment(modelName , getSignal , models=models):
         buyingsignals, sellingdates = getSignals(frames)
 
         plt.figure(figsize=(12, 5))
-        plt.title('Signals of ' + tickers[0] + ' using the model ' + modelName  )
+        plt.title('Signals of ' + tickers[0] + ' using the model ' + modelName)
         plt.scatter(frames.loc[buyingsignals].index, frames.loc[buyingsignals]['Adj Close'], marker='^', c='g')
         plt.plot(frames['Adj Close'], alpha=0.7)
         plt.scatter(frames.loc[sellingdates].index, frames.loc[sellingdates]['Adj Close'], marker='^', c='r')
@@ -119,9 +125,6 @@ def runPredictionWithoutSentiment(modelName , getSignal , models=models):
         wins = [i for i in profits if i > 0]
         winning_rate = len(wins) / len(profits)
         return predictions, y_test, output_df, frames, buyingsignals, sellingdates, winning_rate
-    return predictions, y_test ,  stocks, RMSE, R_Squared
+    return predictions, y_test, stocks, RMSE, R_Squared,nex_day_price
 
-
-
-
-#print(runPredictionWithoutSentiment( 'SVR', False))
+# print(runPredictionWithoutSentiment( 'SVR', False))
