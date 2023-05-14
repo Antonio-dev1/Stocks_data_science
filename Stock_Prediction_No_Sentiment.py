@@ -11,6 +11,7 @@ from sklearn.model_selection import train_test_split, cross_val_score, KFold, Gr
 import yfinance as yf
 from xgboost import XGBRegressor
 from sklearn import metrics
+import pickle
 
 from Signal_Algorithm import RSI_Calc, getSignals
 
@@ -52,6 +53,9 @@ def scaleData(X_train, X_test):
     return X_train, X_test
 
 
+def convertToPickle(model):
+    pickle.dump(model, open('pickleFiles/Stock_Lasso.pkl', 'wb'))
+
 def getPrediction(model, X_train, X_test, y_train, y_test):
     model.fit(X_train, y_train.ravel())
     predicted = model.predict(X_test)
@@ -59,6 +63,19 @@ def getPrediction(model, X_train, X_test, y_train, y_test):
     R_squared = model.score(X_test, y_test)
     next_day_price = calculate_next_day_price(model, X_test)
     return predicted, rootMeanSquared, R_squared,next_day_price
+
+
+def getPredictionsWithSavedModel(modelName, X_test, y_test):
+    model = pickle.load(open(f'../pickleFiles/Stock_{modelName}.pkl', 'rb'))
+    predicted = model.predict(X_test)
+    rootMeanSquared = np.sqrt(metrics.mean_squared_error(y_test, predicted))
+    R_squared = metrics.r2_score(y_test, predicted)
+    return predicted, rootMeanSquared, R_squared
+
+
+def calculate_next_day_price(model, X_test):
+    next_day_pred = model.predict(X_test[-1].reshape(1, -1))
+    return next_day_pred[0]
 
 
 def calculate_next_day_price(model, X_test):
@@ -88,6 +105,7 @@ models = {
     'LinearRegression': LinearRegression(),
     'Ridge': GridSearchCV(Ridge(), param_grid=params),
     'SVR': GridSearchCV(SVR(kernel='linear'), param_grid=params_svr),
+    'Lasso': GridSearchCV(Lasso(), param_grid=params),
     'XGB': XGBRegressor(objective='reg:squarederror', n_estimators=1000)
 }
 
@@ -103,8 +121,10 @@ def runPredictionWithoutSentiment(modelName, getSignal, models=models):
     target_col = 'Adj Close'
     X_train, X_test, y_train, y_test, y_train_dates, y_test_dates = splitData(stock_clean, 0.8, features, target_col)
     X_train, X_test = scaleData(X_train, X_test)
-    predictions, RMSE, R_Squared,nex_day_price = getPrediction(ml_model, X_train, X_test, y_train, y_test)
-    stocks, results, output_df = convertToPandas(stock_clean, y_test, predictions)
+
+    predictions, RMSE, R_Squared, next_day = getPrediction(ml_model, X_train, X_test, y_train, y_test)
+    stocks , results, output_df = convertToPandas(stock_clean , y_test , predictions)
+
     print(output_df)
     print(mean_squared_error(y_test, predictions, squared=False))
 
@@ -125,6 +145,43 @@ def runPredictionWithoutSentiment(modelName, getSignal, models=models):
         wins = [i for i in profits if i > 0]
         winning_rate = len(wins) / len(profits)
         return predictions, y_test, output_df, frames, buyingsignals, sellingdates, winning_rate
+
+    return predictions, y_test ,  stocks, RMSE, R_Squared, next_day
+
+def runPredictionWithoutSentimentWithSavedModels(modelName , getSignal , models=models):
+    print("Loading model without sentiment...")
+    tickers = ['AAPL', 'MSFT']
+    stocks_data = getData(tickers)
+    stock_clean = cleanDataFrameandAddFeatures(stocks_data[0])
+    features = ['Open', 'High', 'Low']
+    target_col = 'Adj Close'
+    X_train, X_test, y_train, y_test, y_train_dates, y_test_dates = splitData(stock_clean, 0.8, features, target_col)
+    X_train, X_test = scaleData(X_train, X_test)
+    predictions, RMSE, R_Squared = getPredictionsWithSavedModel(modelName, X_test, y_test)
+    stocks , results, output_df = convertToPandas(stock_clean , y_test , predictions)
+    print(output_df)
+    print(mean_squared_error(y_test, predictions, squared=False))
+
+    if getSignal:
+        frames = RSI_Calc(output_df)
+        buyingsignals, sellingdates = getSignals(frames)
+
+        plt.figure(figsize=(12, 5))
+        plt.title('Signals of ' + tickers[0] + ' using the model ' + modelName  )
+        plt.scatter(frames.loc[buyingsignals].index, frames.loc[buyingsignals]['Adj Close'], marker='^', c='g')
+        plt.plot(frames['Adj Close'], alpha=0.7)
+        plt.scatter(frames.loc[sellingdates].index, frames.loc[sellingdates]['Adj Close'], marker='^', c='r')
+        plt.plot(frames['Adj Close'], alpha=0.7)
+        plt.show()
+        profits = (frames.loc[sellingdates].Open.values - frames.loc[buyingsignals].Open.values) / frames.loc[
+            buyingsignals].Open.values
+
+        wins = [i for i in profits if i > 0]
+        winning_rate = len(wins) / len(profits)
+        return predictions, y_test, output_df, frames, buyingsignals, sellingdates, winning_rate
+    return predictions, y_test ,  stocks, RMSE, R_Squared
+
     return predictions, y_test, stocks, RMSE, R_Squared,nex_day_price
 
 # print(runPredictionWithoutSentiment( 'SVR', False))
+

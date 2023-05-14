@@ -72,7 +72,7 @@ def line_plot(line1, line2, label1=None, label2=None, title='', lw=2):
 
 
 def convertToPickle(model):
-    pickle.dump(model, open('./pickleFiles/Crypto_LSTM.pkl', 'wb'))
+    pickle.dump(model, open('pickleFiles_crypto/Crypto_LSTM.pkl', 'wb'))
 
 
 def generate_signals(y_test, preds):
@@ -123,6 +123,38 @@ def runCryptoLSTM(getSignal):
             buy_signals, sell_signals = generate_signals(y_test, preds)
             return preds, test_data, window_len, buy_signals, sell_signals
 
+
+    return preds,targets,mse
+
+
+def runCryptoLSTMWithSavedModel(getSignal):
+    data = getData('BTC-USD')
+    aim = 'Close'
+    window_len = 5
+    test_size = 0.2
+    zero_base = True
+    train_data, test_data, X_train, X_test, y_train, y_test = prepare_data(data, aim, window_len=window_len,
+                                                                           zero_base=zero_base, test_size=test_size)
+
+    model = pickle.load(open('../pickleFiles_crypto/Crypto_LSTM.pkl', 'rb'))
+
+    targets = test_data[aim][window_len:]
+    preds = model.predict(X_test).squeeze()
+    mse = mean_absolute_error(preds, y_test)
+
+    preds = test_data[aim].values[:-window_len] * (preds + 1)
+    preds = pd.Series(index=targets.index, data=preds)
+    line_plot(targets, preds, 'actual', 'prediction', lw=2)
+    if getSignal:
+        if getSignal:
+            buy_signals, sell_signals = generate_signals(y_test, preds)
+            return preds, test_data, window_len, buy_signals, sell_signals
+
     return preds, targets, mse
 
+
+
+
+
+#runCryptoLSTM(False)
 # runCryptoLSTM(False)

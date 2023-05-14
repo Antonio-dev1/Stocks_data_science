@@ -74,6 +74,25 @@ def getPredictions(n_steps, n_features, X_train, X_test, y_train, y_test):
     plt.show()
 
     return y_pred,rmse
+
+def getPredictionsWithSavedModel(n_steps, n_features, X_train, X_test, y_train, y_test):
+    model = pickle.load(open('../pickleFiles_crypto/Crypto_LSTM.pkl', 'rb'))
+    y_pred = model.predict(X_test).flatten()
+    print(y_pred.shape)
+    # rescale predictions and actual values
+    rmse = mean_squared_error(y_test, y_pred, squared=False)
+    print('Test RMSE: %.3f' % rmse)
+
+    print(y_pred)
+    print(y_test)
+    plt.plot(y_pred)
+    plt.plot(y_test)
+    plt.legend(['Predictions', 'Actual'])
+    plt.show()
+
+    return y_pred,rmse
+
+
 def convertToPickle(model):
     pickle.dump(model, open('./pickleFiles/Stock_LSTM.pkl', 'wb'))
 
@@ -118,5 +137,27 @@ def runLSTM(getSignal, tickers=allTickers, stockInChoice=oneTicker):
         return y_pred, y_test, output_df, frames, buyingsignals, sellingdates, winning_rate
     return y_pred, y_test ,  stocks, RMSE
 
+def runLSTMWithSavedModel(getSignal, tickers=allTickers, stockInChoice=oneTicker):
+    start = dt.datetime(2010, 1, 1)
+    stock_dict = getData(start, tickers)
+    stock_df = stock_dict[stockInChoice]
+    X_train, X_test, y_train, y_test = splitData(stock_df)
+    y_pred,RMSE = getPredictionsWithSavedModel(60, 5, X_train, X_test, y_train, y_test)
+    stocks,results,output_df = convertToPandas(stock_df,y_test,y_pred)
+
+    if getSignal:
+        stocks, results, output_df = convertToPandas(stock_df, y_test, y_pred)
+        frames = RSI_Calc(output_df)
+        buyingsignals, sellingdates = getSignals(frames)
+        profits = (frames.loc[sellingdates].Open.values - frames.loc[buyingsignals].Open.values) / frames.loc[
+            buyingsignals].Open.values
+        wins = [i for i in profits if i > 0]
+        winning_rate = len(wins) / len(profits)
+        plt.figure(figsize=(12, 5))
+        plt.scatter(frames.loc[buyingsignals].index, frames.loc[buyingsignals]['Adj Close'], marker='^', c='g')
+        plt.scatter(frames.loc[sellingdates].index, frames.loc[sellingdates]['Adj Close'], marker='^', c='r')
+        plt.plot(frames['Adj Close'], alpha=0.7)
+        return y_pred, y_test, output_df, frames, buyingsignals, sellingdates, winning_rate
+    return y_pred, y_test ,  stocks, RMSE
 
 #runLSTM(True)
