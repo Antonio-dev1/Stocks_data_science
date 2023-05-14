@@ -8,7 +8,7 @@ import yfinance as yf
 from sklearn.model_selection import GridSearchCV
 from sklearn.svm import SVR
 from xgboost import XGBRegressor
-import pickle
+
 
 def download_data(tickers):
     data = yf.download(tickers , start='2010-01-01')
@@ -74,12 +74,6 @@ def generate_signals(y_test, preds):
 def calculate_next_day_price(model, X_test):
     next_day_pred = model.predict(X_test[-1].reshape(1, -1))
     return next_day_pred[0]
-
-
-
-def convertToPickle(model):
-    pickle.dump(model, open('pickleFiles_crypto/Crypto_XGB.pkl', 'wb'))
-
 
 
 # def plot_results(data, window_size, train_size, y_test, preds):
@@ -171,7 +165,6 @@ def runCryptoAnalysis(getSignal, modelName, allModels=models):
     # Make predictions on the test set
     preds = predict(model, X_test)
 
-
     # Compute evaluation metrics
     mae, mse, r2 = evaluate(y_test, preds)
 
@@ -182,39 +175,6 @@ def runCryptoAnalysis(getSignal, modelName, allModels=models):
         next_day_price = calculate_next_day_price(model, X_test)
         return preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test, next_day_price
 
-def runCryptoAnalysisWithSavedModels(getSignal, modelName, allModels=models):
-    print("Loading saved crypto models...")
-    tickers = 'BTC-USD'
-    data = download_data(tickers)
-    ml_model = allModels[modelName]
-
-    # Extract relevant features
-    data = extract_features(data)
-
-    # Split the data into training and test sets
-    train_data, test_data = split_data(data, 200)
-
-    # Prepare the data for linear regression with a rolling window
-    window_size = 5
-    X_train, y_train, X_test, y_test = prepare_data(train_data, test_data, window_size)
-
-    # Create and train the linear regression model
-    model = pickle.load(open(f'../pickleFiles_crypto/Crypto_{modelName}.pkl', 'rb'))
-
-    # Make predictions on the test set
-    preds = predict(model, X_test)
-
-    # Compute evaluation metrics
-    mae, mse, r2 = evaluate(y_test, preds)
-
-    if getSignal:
-        buy_signals, sell_signals = generate_signals(y_test, preds)
-
-        return preds,test_data, window_size,buy_signals, sell_signals
-    else:
-        next_day_price = calculate_next_day_price(model, X_test)
-        return preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test, next_day_price
 
 
-
-# preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test = runCryptoAnalysis(False , 'XGB')
+#print(runCryptoAnalysis(False , 'LinearRegression'))

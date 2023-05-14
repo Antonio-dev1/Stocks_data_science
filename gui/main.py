@@ -1,17 +1,18 @@
 import tkinter
 import tkinter.messagebox
 import customtkinter
-from SentimentAnalysis import runStockPredictionSentiment, runStockPredictionSentimentWithSavedModel
-from Stock_Prediction_No_Sentiment import runPredictionWithoutSentiment, runPredictionWithoutSentimentWithSavedModels
-from Stock_Prediction_LSTM import runLSTM, runLSTMWithSavedModel
-from Crypto_Analysis import runCryptoAnalysis, runCryptoAnalysisWithSavedModels
-from Crypto_LSTM import runCryptoLSTM, runCryptoLSTMWithSavedModel
+from SentimentAnalysis import runStockPredictionSentiment
+from Stock_Prediction_No_Sentiment import runPredictionWithoutSentiment
+from Stock_Prediction_LSTM import runLSTM
+from Crypto_Analysis import runCryptoAnalysis
+from Crypto_LSTM import runCryptoLSTM
 
 customtkinter.set_appearance_mode("System")  # Modes: "System" (standard), "Dark", "Light"
 customtkinter.set_default_color_theme("blue")  # Themes: "blue" (standard), "green", "dark-blue"
 import matplotlib.backends.backend_tkagg as tkagg
 import matplotlib.pyplot as plt
-import pickle
+from tkinter import ttk
+
 
 class App(customtkinter.CTk):
     def __init__(self):
@@ -20,7 +21,6 @@ class App(customtkinter.CTk):
         # configure window
         self.title("Buy High, Sell Low")
         self.geometry(f"{1200}x{580}")
-        self.isDrawn = False
 
         # configure grid layout (4x4)
         self.grid_columnconfigure(1, weight=1)
@@ -59,19 +59,17 @@ class App(customtkinter.CTk):
         self.appearance_mode_optionemenu.set("Dark")
 
         # create main entry and button
-        self.model_output = customtkinter.CTkLabel(self, text='')
+        self.model_output = customtkinter.CTkLabel(self)
         self.model_output.grid(row=3, column=1, columnspan=2, padx=(20, 0), pady=(20, 20), sticky="nsew")
 
         # create radiobutton frame
         self.radiobutton_frame = customtkinter.CTkFrame(self)
-
         self.radiobutton_frame.grid(row=1, column=3, padx=(20, 20), pady=(20, 0), sticky="nsew")
         self.radio_var = tkinter.IntVar(value=0)
-        self.radio_var_saved = tkinter.IntVar(value=1)
         self.label_radio_group = customtkinter.CTkLabel(master=self.radiobutton_frame, text="Models:")
         self.label_radio_group.grid(row=1, column=0, columnspan=1, padx=10, pady=10, sticky="")
         self.radio_button_1 = customtkinter.CTkRadioButton(master=self.radiobutton_frame, variable=self.radio_var,
-                                                           text="LinearRegression", value=0)
+                                                           text="Linear Regression", value=0)
         self.radio_button_1.grid(row=1, column=3, pady=10, padx=20, sticky="n")
         self.radio_button_2 = customtkinter.CTkRadioButton(master=self.radiobutton_frame, variable=self.radio_var,
                                                            text="Ridge", value=1)
@@ -92,19 +90,20 @@ class App(customtkinter.CTk):
                                                            text="RandomForest", value=6)
         self.radio_button_7.grid(row=7, column=3, pady=10, padx=20, sticky="n")
 
-        self.checkbox_var_models = tkinter.IntVar(value=1)
-        self.checkbox_use_saved = customtkinter.CTkCheckBox(master=self.radiobutton_frame, text="Use Saved Models",
-                                                            height=10,
-                                                            variable=self.checkbox_var_models)
-        self.checkbox_use_saved.grid(row=7, column=3, pady=10, padx=20, sticky="n")
-
-
         # Create a frame to display the graph
+
+        # self.radio_buttons_slider_frame = customtkinter.CTkFrame(self , height=0)
+        # self.radio_buttons_s.grid(row=1, column=3, padx=(20, 0), pady=(20, 0), sticky="nsew")
+        # self.checkbox_getSignal = customtkinter.CTkCheckBox(master=self.checkbox_slider_frame, text="getSignal" , height=10)
+        # self.checkbox_getSignal.grid(row=1, column=0, pady=(20, 0), padx=20, sticky="n")
+        # # set default values
+        # self.checkbox_getSignal.select()
+        # self.appearance_mode_optionemenu.set("Dark")
+        # self.scaling_optionemenu.set("100%")
 
         self.frame = customtkinter.CTkFrame(self, height=1100)
         self.frame.grid(row=1, column=1, padx=(10, 0), pady=(10, 0), sticky="nsew")
         self.figure = plt.figure(figsize=(10, 10), dpi=100)
-
         # create a canvas to display the figure
         self.canvas = tkagg.FigureCanvasTkAgg(self.figure, master=self.frame)
         self.canvas.get_tk_widget().pack()
@@ -125,30 +124,11 @@ class App(customtkinter.CTk):
 
     def stock_sentimentClicked(self):
         plt.clf()
-
-
-        ax = self.figure.add_subplot(111)
-        if self.isDrawn:
-            ax.clear()
-            ax.set_title("")
-            ax.set_xlabel("")
-            ax.set_ylabel("")
-            ax.set_xticks([])
-            ax.set_yticks([])
-            print('canva cleared')
-            self.canvas.draw()
-
-        modelsMap = {0: 'LinearRegression', 1: 'Ridge', 2: 'Lasso', 3: 'LSTM', 4: "SVR", 5: "XGB"}
-
+        modelsMap = {0: 'LinearRegression', 1: 'Ridge', 2: 'Lasso', 3: 'LSTM', 4: "SVR", 5: "XGB" , 6:"RandomForest"}
         modelName = modelsMap[self.radio_var.get()]
         if self.checkbox_getSignal.get() == 1:
-            if self.checkbox_use_saved.get() == 1:
-                print(modelName)
-                predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runStockPredictionSentimentWithSavedModel(
-                    modelName, self.checkbox_getSignal.get())
-            else:
-                predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runStockPredictionSentiment(
-                    modelName, self.checkbox_getSignal.get())
+            predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runStockPredictionSentiment(
+                modelName, self.checkbox_getSignal.get())
             ax = self.figure.add_subplot(111)
             ax.scatter(frames.loc[buyingsignals].index, frames.loc[buyingsignals]['Adj Close'], marker='^', c='g')
             ax.plot(frames['Adj Close'], alpha=0.7)
@@ -157,14 +137,8 @@ class App(customtkinter.CTk):
             ax.set_title('Buying and Selling Signals for the predictions done by ' + str(modelName) + " model")
             self.model_output.configure(text="Winning rate of strategy is " + str(winning_rate))
             self.canvas.draw()
-
         elif self.checkbox_getSignal.get() == 0:
-            if self.checkbox_use_saved.get() == 1:
-                print(modelName)
-                predicted_prices, real_prices, output_df, RMSE, Rsquared = runStockPredictionSentimentWithSavedModel(
-                    modelName, self.checkbox_getSignal.get())
-            else:
-                predicted_prices, real_prices, output_df, RMSE, Rsquared = runStockPredictionSentiment(modelName,
+            predicted_prices, real_prices, output_df, RMSE, Rsquared = runStockPredictionSentiment(modelName,
                                                                                                    self.checkbox_getSignal.get())
             ax = self.figure.add_subplot(111)
             ax.plot(output_df.index, output_df['Real'], c='y')
@@ -173,25 +147,10 @@ class App(customtkinter.CTk):
             ax.set_title('This is the graph for the prediction of the ' + modelName + " model")
             self.model_output.configure(text="R-squared " + str(Rsquared) + "\n" + "RMSE: " + str(RMSE))
             self.canvas.draw()
-            self.isDrawn = True
 
     def regularStockPressed(self):
         plt.clf()
-
-
-        ax = self.figure.add_subplot(111)
-        if self.isDrawn:
-            ax.clear()
-            ax.set_title("")
-            ax.set_xlabel("")
-            ax.set_ylabel("")
-            ax.set_xticks([])
-            ax.set_yticks([])
-            print('canva cleared')
-            self.canvas.draw()
-
-        modelsMap = {0: 'LinearRegression', 1: 'Ridge', 2: 'Lasso', 3: 'LSTM', 4: "SVR", 5: "XGB"}
-
+        modelsMap = {0: 'LinearRegression', 1: 'Ridge', 2: 'Lasso', 3: 'LSTM', 4: "SVR", 5: "XGB" , 6:"RandomForest"}
         modelName = modelsMap[self.radio_var.get()]
 
         if modelName == 'LSTM':
@@ -199,12 +158,7 @@ class App(customtkinter.CTk):
         else:
             if self.checkbox_getSignal.get() == 1:
                 plt.clf()
-                if self.checkbox_use_saved.get() == 1:
-                    print(modelName)
-                    predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runPredictionWithoutSentimentWithSavedModels(
-                        modelName, self.checkbox_getSignal.get())
-                else:
-                    predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runPredictionWithoutSentiment(
+                predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runPredictionWithoutSentiment(
                     modelName, self.checkbox_getSignal.get())
                 ax = self.figure.add_subplot(111)
                 ax.scatter(frames.loc[buyingsignals].index, frames.loc[buyingsignals]['Adj Close'], marker='^', c='g')
@@ -215,60 +169,31 @@ class App(customtkinter.CTk):
                 self.model_output.configure(text="Winning rate of strategy is " + str(winning_rate))
                 self.canvas.draw()
 
-                self.isDrawn = True
-
 
             elif self.checkbox_getSignal.get() == 0:
                 plt.clf()
-
-                if self.checkbox_use_saved.get() == 1:
-                    print(modelName)
-                    predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runPredictionWithoutSentimentWithSavedModels(
-                        modelName, self.checkbox_getSignal.get())
-                else:
                 predicted_prices, real_prices, output_df, RMSE, Rsquared,next_day_price = runPredictionWithoutSentiment(modelName,
-
                                                                                                          self.checkbox_getSignal.get())
                 ax = self.figure.add_subplot(111)
                 ax.plot(output_df.index, output_df['Real'], c='y')
                 ax.plot(output_df.index, output_df['Adj Close'], c='orange')
                 ax.legend(['Actual', 'Predicted'])
                 ax.set_title('This is the graph for the prediction of the ' + modelName + " model")
-
-                self.model_output.configure(text="RMSE: " + str(RMSE)+ "\n" + "Next day price: " + str(next_day_price))
+                self.model_output.configure(text="RMSE: " + str(RMSE)  + "\n" + "Next Day: "+str(next_day_price))
                 self.canvas.draw()
-
-                self.isDrawn = True
 
     def onCryptoPressed(self):
         plt.clf()
-
-
-        ax = self.figure.add_subplot(111)
-        if self.isDrawn:
-            ax.clear()
-            ax.set_title("")
-            ax.set_xlabel("")
-            ax.set_ylabel("")
-            ax.set_xticks([])
-            ax.set_yticks([])
-            print('canva cleared')
-            self.canvas.draw()
-
-        modelsMap = {0: 'LinearRegression', 1: 'Ridge', 2: 'Lasso', 3: 'LSTM', 4: "SVR", 5: "XGB"}
+        modelsMap = {0: 'LinearRegression', 1: 'Ridge', 2: 'Lasso', 3: 'LSTM', 4: "SVR", 5: "XGB" , 6:"RandomForest"}
         modelName = modelsMap[self.radio_var.get()]
         if modelName == 'LSTM':
             plotLSTMCrypto(self, self.checkbox_getSignal.get())
         else:
             if self.checkbox_getSignal.get() == 1:
                 plt.clf()
-                if self.checkbox_use_saved.get() == 1:
-                    print(modelName)
-                    preds, test_data, window_size, buy_signals, sell_signals = runCryptoAnalysisWithSavedModels(
-                        self.checkbox_getSignal.get(), modelName)
-                else:
-                    preds, test_data, window_size, buy_signals, sell_signals = runCryptoAnalysis(
-                    self.checkbox_getSignal.get(), modelName)
+                preds, test_data, window_size, buy_signals, sell_signals = runCryptoAnalysis(
+                    self.checkbox_getSignal.get(),
+                    modelName)
                 ax = self.figure.add_subplot(111)
                 ax.plot(test_data.index[window_size:], preds, label='Predicted', linewidth=2)
                 ax.scatter(test_data.index[window_size:][buy_signals], preds[buy_signals], color='green',
@@ -279,21 +204,11 @@ class App(customtkinter.CTk):
                            marker='v', zorder=3)
                 ax.set_title('Buying and Selling Signals for the predictions done by ' + str(modelName) + " model")
                 self.canvas.draw()
-
-                self.isDrawn = True
-
             elif self.checkbox_getSignal.get() == 0:
                 plt.clf()
-
-                if self.checkbox_use_saved.get() == 1:
-                    print(modelName)
-                    preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test, next_day_price = runCryptoAnalysisWithSavedModels(
-                        self.checkbox_getSignal.get(), modelName)
-                else:
-                    preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test, next_day_price = runCryptoAnalysis(
-                        self.checkbox_getSignal.get(),
-                            modelName)
-
+                preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test,next_day_price = runCryptoAnalysis(
+                    self.checkbox_getSignal.get(),
+                    modelName)
                 train_size = len(train_data)
                 ax = self.figure.add_subplot(111)
                 ax.plot(data.index[window_size + train_size:], data['Close'][window_size + train_size:],
@@ -304,33 +219,13 @@ class App(customtkinter.CTk):
                 ax.set_ylabel('BTC/USD')
                 ax.set_title('BTC/USD Prediction using ' + str(modelName) + ' with Rolling Window')
                 self.model_output.configure(
-
-                    text="MAE: " + str(mae) + "\n" + "MSE: " + str(mse) + "\n" + "R2: " + str(r2) + "\n" + "Next day price: " + str(next_day_price))
-
+                    text="MAE: " + str(mae) + "\n" + "MSE: " + str(mse) + "\n" + "R2: " + str(r2) +'\n' +"Next Day price: " +str(next_day_price))
                 self.canvas.draw()
-                self.isDrawn = True
+
 
 def plotLSTM(self, getSignal):
-    plt.clf()
-
-    ax = self.figure.add_subplot(111)
-    if self.isDrawn:
-        ax.clear()
-        ax.set_title("")
-        ax.set_xlabel("")
-        ax.set_ylabel("")
-        ax.set_xticks([])
-        ax.set_yticks([])
-        print('canva cleared')
-        self.canvas.draw()
-
     if getSignal:
-        if self.checkbox_use_saved.get() == 1:
-            print("Regular LSTM")
-            predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runLSTMWithSavedModel(
-                getSignal)
-        else:
-            predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runLSTM(getSignal)
+        predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runLSTM(getSignal)
         ax = self.figure.add_subplot(111)
         ax.scatter(frames.loc[buyingsignals].index, frames.loc[buyingsignals]['Adj Close'], marker='^', c='g')
         ax.plot(frames['Adj Close'], alpha=0.7)
@@ -339,16 +234,9 @@ def plotLSTM(self, getSignal):
         ax.set_title('Buying and Selling Signals for the predictions done by LSTM' + " model")
         self.model_output.configure(text="Winning rate of strategy is " + str(winning_rate))
         self.canvas.draw()
-        self.isDrawn = True
-
 
     else:
-        if self.checkbox_use_saved.get() == 1:
-            print("Regular LSTM")
-            predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runLSTMWithSavedModel(
-                getSignal)
-        else:
-            predicted_prices, real_prices, output_df, RMSE = runLSTM(getSignal)
+        predicted_prices, real_prices, output_df, RMSE = runLSTM(getSignal)
         ax = self.figure.add_subplot(111)
         ax.plot(output_df.index, output_df['Real'], c='y')
         ax.plot(output_df.index, output_df['Adj Close'], c='orange')
@@ -357,35 +245,11 @@ def plotLSTM(self, getSignal):
         self.model_output.configure(text="RMSE: " + str(RMSE))
         self.canvas.draw()
 
-        self.isDrawn = True
-
-
-def plotLSTMCrypto(self , getSignal):
-    plt.clf()
-
-    ax = self.figure.add_subplot(111)
-    if self.isDrawn:
-        ax.clear()
-        ax.set_title("")
-        ax.set_xlabel("")
-        ax.set_ylabel("")
-        ax.set_xticks([])
-        ax.set_yticks([])
-        print('canva cleared')
-        self.canvas.draw()
-
-
-
 
 def plotLSTMCrypto(self, getSignal):
     plt.clf()
-
     if getSignal:
-        if self.checkbox_use_saved.get() == 1:
-            print("Crypto LSTM")
-            preds, test_data, window_size, buy_signals, sell_signals = runCryptoLSTMWithSavedModel(getSignal)
-        else:
-            preds, test_data, window_size, buy_signals, sell_signals = runCryptoLSTM(getSignal)
+        preds, test_data, window_size, buy_signals, sell_signals = runCryptoLSTM(getSignal)
         ax = self.figure.add_subplot(111)
         ax.plot(test_data.index[window_size:], preds, label='Predicted', linewidth=2)
         ax.scatter(test_data.index[window_size:][buy_signals], preds[buy_signals], color='green',
@@ -396,17 +260,9 @@ def plotLSTMCrypto(self, getSignal):
                    marker='v', zorder=3)
         ax.set_title('Buying and Selling Signals for the predictions done by LSTM' + " model")
         self.canvas.draw()
-        self.isDrawn = True
-
 
     else:
-
-        if self.checkbox_use_saved.get() == 1:
-            print("Crypto LSTM")
-            preds, targets, mse = runCryptoLSTMWithSavedModel(getSignal)
-        else:
-            preds, targets, mse = runCryptoLSTM(getSignal)
-
+        preds, targets, mse= runCryptoLSTM(getSignal)
         ax = self.figure.add_subplot(111)
         ax.plot(targets, label='actual', linewidth=2)
         ax.plot(preds, label='predictions', linewidth=2)
@@ -415,7 +271,7 @@ def plotLSTMCrypto(self, getSignal):
         ax.legend(loc='best', fontsize=16)
         self.model_output.configure(text="MSE: " + str(mse))
         self.canvas.draw()
-        self.isDrawn = True
+
 
 if __name__ == "__main__":
     app = App()
