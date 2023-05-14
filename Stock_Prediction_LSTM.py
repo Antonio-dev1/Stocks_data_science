@@ -76,7 +76,7 @@ def getPredictions(n_steps, n_features, X_train, X_test, y_train, y_test):
     return y_pred,rmse
 
 def getPredictionsWithSavedModel(n_steps, n_features, X_train, X_test, y_train, y_test):
-    model = pickle.load(open('../pickleFiles/Crypto_LSTM.pkl', 'rb'))
+    model = pickle.load(open('../pickleFiles_crypto/Crypto_LSTM.pkl', 'rb'))
     y_pred = model.predict(X_test).flatten()
     print(y_pred.shape)
     # rescale predictions and actual values

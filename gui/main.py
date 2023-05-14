@@ -94,8 +94,7 @@ class App(customtkinter.CTk):
                                                             height=10,
                                                             variable=self.checkbox_var_models)
         self.checkbox_use_saved.grid(row=7, column=3, pady=10, padx=20, sticky="n")
-        # set default values
-        self.checkbox_use_saved.select()
+
 
         # Create a frame to display the graph
 
@@ -157,7 +156,7 @@ class App(customtkinter.CTk):
         elif self.checkbox_getSignal.get() == 0:
             if self.checkbox_use_saved.get() == 1:
                 print(modelName)
-                predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runStockPredictionSentimentWithSavedModel(
+                predicted_prices, real_prices, output_df, RMSE, Rsquared = runStockPredictionSentimentWithSavedModel(
                     modelName, self.checkbox_getSignal.get())
             else:
                 predicted_prices, real_prices, output_df, RMSE, Rsquared = runStockPredictionSentiment(modelName,
@@ -219,14 +218,14 @@ class App(customtkinter.CTk):
                     predicted_prices, real_prices, output_df, frames, buyingsignals, sellingdates, winning_rate = runPredictionWithoutSentimentWithSavedModels(
                         modelName, self.checkbox_getSignal.get())
                 else:
-                    predicted_prices, real_prices, output_df, RMSE, Rsquared = runPredictionWithoutSentiment(modelName,
+                    predicted_prices, real_prices, output_df, RMSE, Rsquared, next_day_price = runPredictionWithoutSentiment(modelName,
                                                                                                          self.checkbox_getSignal.get())
                 ax = self.figure.add_subplot(111)
                 ax.plot(output_df.index, output_df['Real'], c='y')
                 ax.plot(output_df.index, output_df['Adj Close'], c='orange')
                 ax.legend(['Actual', 'Predicted'])
                 ax.set_title('This is the graph for the prediction of the ' + modelName + " model")
-                self.model_output.configure(text="RMSE: " + str(RMSE))
+                self.model_output.configure(text="RMSE: " + str(RMSE)+ "\n" + "Next day price: " + str(next_day_price))
                 self.canvas.draw()
 
                 self.isDrawn = True
@@ -275,10 +274,10 @@ class App(customtkinter.CTk):
                 plt.clf()
                 if self.checkbox_use_saved.get() == 1:
                     print(modelName)
-                    preds, test_data, window_size, buy_signals, sell_signals = runCryptoAnalysisWithSavedModels(
+                    preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test, next_day_price = runCryptoAnalysisWithSavedModels(
                         self.checkbox_getSignal.get(), modelName)
                 else:
-                    preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test = runCryptoAnalysis(
+                    preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test, next_day_price = runCryptoAnalysis(
                         self.checkbox_getSignal.get(),
                             modelName)
                 train_size = len(train_data)
@@ -291,11 +290,9 @@ class App(customtkinter.CTk):
                 ax.set_ylabel('BTC/USD')
                 ax.set_title('BTC/USD Prediction using ' + str(modelName) + ' with Rolling Window')
                 self.model_output.configure(
-                    text="MAE: " + str(mae) + "\n" + "MSE: " + str(mse) + "\n" + "R2: " + str(r2))
+                    text="MAE: " + str(mae) + "\n" + "MSE: " + str(mse) + "\n" + "R2: " + str(r2) + "\n" + "Next day price: " + str(next_day_price))
                 self.canvas.draw()
                 self.isDrawn = True
-
-
 
 def plotLSTM(self, getSignal):
     plt.clf()
@@ -381,7 +378,7 @@ def plotLSTMCrypto(self , getSignal):
     else:
         if self.checkbox_use_saved.get() == 1:
             print("Crypto LSTM")
-            preds, test_data, window_size, buy_signals, sell_signals = runCryptoLSTMWithSavedModel(getSignal)
+            preds, targets, mse = runCryptoLSTMWithSavedModel(getSignal)
         else:
             preds, targets, mse = runCryptoLSTM(getSignal)
         ax = self.figure.add_subplot(111)

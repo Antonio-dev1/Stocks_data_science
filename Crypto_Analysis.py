@@ -64,6 +64,11 @@ def generate_signals(y_test, preds):
     sell_signals[::100] = price_diff[::100] > 0
     return buy_signals, sell_signals
 
+def calculate_next_day_price(model, X_test):
+    next_day_pred = model.predict(X_test[-1].reshape(1, -1))
+    return next_day_pred[0]
+
+
 def convertToPickle(model):
     pickle.dump(model, open('pickleFiles_crypto/Crypto_XGB.pkl', 'wb'))
 
@@ -153,15 +158,19 @@ def runCryptoAnalysis(getSignal, modelName, allModels=models):
 
     # Create and train the linear regression model
     model = train_model(X_train, y_train , ml_model)
-    # convertToPickle(model)
+
     # Make predictions on the test set
     preds = predict(model, X_test)
+
     # Compute evaluation metrics
     mae, mse, r2 = evaluate(y_test, preds)
+
     if getSignal:
         buy_signals, sell_signals = generate_signals(y_test, preds)
-        return preds,test_data, window_size,buy_signals, sell_signals
-    return preds, test_data,train_data,y_test, window_size,  mae, mse, r2,data,X_test
+        return preds, test_data, window_size, buy_signals, sell_signals
+    else:
+        next_day_price = calculate_next_day_price(model, X_test)
+        return preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test, next_day_price
 
 def runCryptoAnalysisWithSavedModels(getSignal, modelName, allModels=models):
     print("Loading saved crypto models...")
@@ -189,7 +198,10 @@ def runCryptoAnalysisWithSavedModels(getSignal, modelName, allModels=models):
     if getSignal:
         buy_signals, sell_signals = generate_signals(y_test, preds)
         return preds,test_data, window_size,buy_signals, sell_signals
-    return preds, test_data,train_data,y_test, window_size,  mae, mse, r2,data,X_test
+    else:
+        next_day_price = calculate_next_day_price(model, X_test)
+        return preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test, next_day_price
+    # return preds, test_data,train_data,y_test, window_size,  mae, mse, r2,data,X_test
 
 
 # preds, test_data, train_data, y_test, window_size, mae, mse, r2, data, X_test = runCryptoAnalysis(False , 'XGB')

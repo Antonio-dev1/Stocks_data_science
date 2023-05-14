@@ -144,7 +144,7 @@ def convertToPickle(model):
 def runStockPredictionSentiment(modelName, getSignal, models=models):
     print("Models has just started")
     model = models[modelName]
-    df = pd.read_csv('./Data/AAPL.csv', index_col="Date", infer_datetime_format=True, parse_dates=True)
+    df = pd.read_csv('../Data/AAPL.csv', index_col="Date", infer_datetime_format=True, parse_dates=True)
     df["Pct_change"] = df["Adj Close"].pct_change()
     # Drop null values
     df.dropna(inplace=True)
