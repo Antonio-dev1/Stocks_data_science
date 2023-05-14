@@ -1,7 +1,7 @@
 import pickle
 
 from keras.models import Sequential
-from keras.layers import Dense, LSTM,Dropout,Activation
+from keras.layers import Dense, LSTM, Dropout, Activation
 from keras import layers
 import matplotlib.pyplot as plt
 import numpy as np
@@ -12,17 +12,16 @@ import numpy as np
 import yfinance as yf
 
 
-
-
 def getData(ticker):
-    data = yf.download(ticker , start= '2009-01-01')
+    data = yf.download(ticker, start='2009-01-01')
     return data
+
 
 def normalise_zero_base(continuous):
     return continuous / continuous.iloc[0] - 1
 
 
-def normalise_min_max(continuous , data):
+def normalise_min_max(continuous, data):
     return (continuous - continuous.min()) / (data.max() - continuous.min())
 
 
@@ -36,7 +35,7 @@ def extract_window_data(continuous, window_len=5, zero_base=True):
     return np.array(window_data)
 
 
-def prepare_data(data ,aim, window_len=10, zero_base=True, test_size=0.2):
+def prepare_data(data, aim, window_len=10, zero_base=True, test_size=0.2):
     train_data = data.iloc[:200]
     test_data = data.iloc[200:]
     X_train = extract_window_data(train_data, window_len, zero_base)
@@ -50,8 +49,6 @@ def prepare_data(data ,aim, window_len=10, zero_base=True, test_size=0.2):
     return train_data, test_data, X_train, X_test, y_train, y_test
 
 
-
-
 def build_lstm_model(input_data, output_size, neurons, activ_func='linear',
                      dropout=0.2, loss='mse', optimizer='adam'):
     model = Sequential()
@@ -63,6 +60,7 @@ def build_lstm_model(input_data, output_size, neurons, activ_func='linear',
     model.compile(loss=loss, optimizer=optimizer)
     return model
 
+
 def line_plot(line1, line2, label1=None, label2=None, title='', lw=2):
     fig, ax = plt.subplots(1, figsize=(13, 7))
     ax.plot(line1, label=label1, linewidth=lw)
@@ -71,6 +69,7 @@ def line_plot(line1, line2, label1=None, label2=None, title='', lw=2):
     ax.set_title(title, fontsize=16)
     ax.legend(loc='best', fontsize=16);
     plt.show()
+
 
 def convertToPickle(model):
     pickle.dump(model, open('pickleFiles_crypto/Crypto_LSTM.pkl', 'wb'))
@@ -84,6 +83,12 @@ def generate_signals(y_test, preds):
     sell_signals[::100] = price_diff[::100] > 0
     return buy_signals, sell_signals
 
+
+def calculate_next_day_price(model, X_test):
+    next_day_pred = model.predict(X_test[-1].reshape(1, -1))
+    return next_day_pred[0]
+
+
 def runCryptoLSTM(getSignal):
     data = getData('BTC-USD')
     aim = 'Close'
@@ -96,7 +101,8 @@ def runCryptoLSTM(getSignal):
     loss = 'mse'
     dropout = 0.24
     optimizer = 'adam'
-    train_data, test_data, X_train, X_test, y_train, y_test = prepare_data(data, aim, window_len=window_len, zero_base=zero_base, test_size=test_size)
+    train_data, test_data, X_train, X_test, y_train, y_test = prepare_data(data, aim, window_len=window_len,
+                                                                           zero_base=zero_base, test_size=test_size)
 
     model = build_lstm_model(
         X_train, output_size=1, neurons=lstm_neurons, dropout=dropout, loss=loss,
@@ -116,6 +122,7 @@ def runCryptoLSTM(getSignal):
         if getSignal:
             buy_signals, sell_signals = generate_signals(y_test, preds)
             return preds, test_data, window_len, buy_signals, sell_signals
+
 
     return preds,targets,mse
 
@@ -150,4 +157,4 @@ def runCryptoLSTMWithSavedModel(getSignal):
 
 
 #runCryptoLSTM(False)
-
+# runCryptoLSTM(False)
