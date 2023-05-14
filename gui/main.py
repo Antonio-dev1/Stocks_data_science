@@ -173,7 +173,7 @@ class App(customtkinter.CTk):
             elif self.checkbox_getSignal.get() == 0:
                 plt.clf()
                 predicted_prices, real_prices, output_df, RMSE, Rsquared,next_day_price = runPredictionWithoutSentiment(modelName,
-                                                                                                         self.checkbox_getSignal.get())
+                                                                                     self.checkbox_getSignal.get())
                 ax = self.figure.add_subplot(111)
                 ax.plot(output_df.index, output_df['Real'], c='y')
                 ax.plot(output_df.index, output_df['Adj Close'], c='orange')

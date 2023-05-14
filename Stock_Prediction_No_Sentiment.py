@@ -14,6 +14,7 @@ from sklearn import metrics
 
 from Signal_Algorithm import RSI_Calc, getSignals
 
+#stocks did not add sentiment analysis
 
 def getData(symbols):
     stock_data = []

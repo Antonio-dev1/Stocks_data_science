@@ -11,7 +11,7 @@ from keras.models import Sequential
 from keras.layers import Dense, LSTM
 from Signal_Algorithm import RSI_Calc, getSignals
 
-
+#run the stock model LSTM prediction no sentiment
 def getData(start, tickers):
     data = {}
     for ticker in tickers:
